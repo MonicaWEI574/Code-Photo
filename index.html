@@ -228,10 +228,10 @@
         }
 
         function updatePreview() {
-            const code = editor.getValue();
+            const rawCode = editor.getValue();
             
             // 【新手引导逻辑】：若无代码，则在右侧显示欢迎与操作引导
-            if (!code.trim()) {
+            if (!rawCode.trim()) {
                 setStatus('empty');
                 const welcomeHTML = `
                 <!DOCTYPE html>
@@ -284,8 +284,15 @@
             }
 
             setStatus('rendering');
+
+            // 【核心防崩溃兼容修复】：使用正则将裸引用（Bare Imports）全部替换为绝对 URL
+            // 这样就彻底抛弃了脆弱的 Importmap 依赖，任何旧版平板/Safari 都能原生识别执行。
+            let safeCode = rawCode
+                .replace(/(from\s+['"])react(['"])/g, "$1https://esm.sh/react@18.3.1$2")
+                .replace(/(from\s+['"])lucide-react(['"])/g, "$1https://esm.sh/lucide-react@0.378.0?external=react,react-dom$2")
+                .replace(/(from\s+['"])react-dom\/client(['"])/g, "$1https://esm.sh/react-dom@18.3.1/client?external=react$2");
             
-            // 组装注入内容：应用原生 ESM + React + Babel 的超级沙箱，加入交互式画布控制
+            // 组装注入内容：原生直连模式，无 polyfill 负担
             const injectedHTML = `
 <!DOCTYPE html>
 <html>
@@ -298,9 +305,8 @@
             padding: 0 !important;
             width: 100vw !important; 
             height: 100vh !important; 
-            overflow: hidden !important; /* 隐藏原生滚动条，由画布接管 */
+            overflow: hidden !important; 
             background-color: #e5e5e5; 
-            /* 禁止文本意外选中影响拖拽 */
             user-select: none;
             -webkit-user-select: none;
         }
@@ -311,6 +317,7 @@
             height: 100vh;
             position: relative;
             cursor: grab;
+            touch-action: none; /* 禁用平板双指缩放及下拉刷新冲突 */
         }
         #viewport:active {
             cursor: grabbing;
@@ -321,7 +328,7 @@
             position: absolute;
             transform-origin: 0 0;
             will-change: transform;
-            padding: 40px; /* 留出呼吸边缘 */
+            padding: 40px; 
             box-sizing: border-box;
             display: inline-block; 
         }
@@ -332,35 +339,16 @@
             max-width: none;
             box-shadow: 0 20px 60px -15px rgba(0,0,0,0.1);
             background: #fff; 
-            /* 恢复内容内部可选中(如果未来需要) */
             user-select: auto;
             -webkit-user-select: auto;
             cursor: auto;
         }
     </style>
     
-    <!-- 引入 Tailwind CSS 處理樣式 -->
     <script src="https://cdn.tailwindcss.com"><\/script>
-    <!-- 引入 html2canvas 負責截圖 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-    <!-- 引入 Babel 實時編譯 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-
-    <!-- 【关键修复 1】：引入 es-module-shims 兼容包，解决平板/旧版浏览器不支持 importmap 导致完全无法渲染的致命问题 -->
-    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"><\/script>
-
-    <!-- 【解決 React #31 錯誤的終極方案】：透過 Import Map 強制所有套件共用同一個 React 18.3.1 實例 -->
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.3.1",
-        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
-        "react-dom": "https://esm.sh/react-dom@18.3.1?external=react",
-        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
-        "lucide-react": "https://esm.sh/lucide-react@0.378.0?external=react,react-dom"
-      }
-    }
-    <\/script>
+    <!-- 注意：此版本彻底移除 importmap 和 es-module-shims，回归最高兼容度的绝对路径模式 -->
 </head>
 <body>
     <div id="viewport">
@@ -372,23 +360,6 @@
         </div>
     </div>
     
-    <!-- 画布控制、截圖與錯誤捕捉腳本 -->
-    <script>
-        // --- 拖拽与缩放逻辑引擎 ---
-        const viewport = document.getElementById('viewport');
-        /* 无限画布视口 */
-        #viewport {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-            cursor: grab;
-            /* 【关键修复 2】：禁用平板/手机浏览器原生的下拉刷新和边缘滑动，防止与画布拖拽冲突 */
-            touch-action: none; 
-        }
-        #viewport:active {
-            cursor: grabbing;
-        }
-    <!-- 画布控制、截圖與錯誤捕捉腳本 -->
     <script>
         // --- 拖拽与缩放逻辑引擎 ---
         const viewport = document.getElementById('viewport');
@@ -442,9 +413,9 @@
         window.addEventListener('mouseup', () => { isDragging = false; });
         window.addEventListener('mouseleave', () => { isDragging = false; });
 
-        // --- 【关键修复 3：新增平板/手机触屏拖拽支持】 ---
+        // --- 触屏拖拽 (平板/手机) ---
         viewport.addEventListener('touchstart', (e) => {
-            if (e.touches.length !== 1) return; // 仅支持单指拖拽，避免多指冲突
+            if (e.touches.length !== 1) return; 
             isDragging = true;
             startX = e.touches[0].clientX - translateX;
             startY = e.touches[0].clientY - translateY;
@@ -452,7 +423,7 @@
 
         window.addEventListener('touchmove', (e) => {
             if (!isDragging || e.touches.length !== 1) return;
-            e.preventDefault(); // 阻止屏幕默认滚动
+            e.preventDefault(); 
             translateX = e.touches[0].clientX - startX;
             translateY = e.touches[0].clientY - startY;
             updateTransform();
@@ -467,14 +438,12 @@
                 try {
                     await new Promise(resolve => setTimeout(resolve, 800)); 
 
-                    // 截图前强制复原 Transform，确保 html2canvas 计算出 1:1 的原始物理尺寸
                     const oldTransform = stage.style.transform;
                     stage.style.transform = 'none';
                     
-                    // 强制触发一次重绘，让浏览器重新排版
                     stage.getBoundingClientRect();
                     await new Promise(r => requestAnimationFrame(r));
-                    await new Promise(r => requestAnimationFrame(r)); // 确保稳定
+                    await new Promise(r => requestAnimationFrame(r)); 
 
                     const captureWidth = rootElement.scrollWidth;
                     const captureHeight = Math.max(rootElement.scrollHeight, rootElement.offsetHeight);
@@ -492,7 +461,7 @@
                         scale: window.devicePixelRatio || 2,
                         logging: false
                     }).then(canvas => {
-                        stage.style.transform = oldTransform; // 截图后无缝恢复原视角
+                        stage.style.transform = oldTransform; 
                         const dataUrl = canvas.toDataURL('image/png', 1.0);
                         window.parent.postMessage({ type: 'capture-success', data: dataUrl }, '*');
                     }).catch(err => {
@@ -506,35 +475,43 @@
             }
         });
 
+        // 加入异常捕获，防止平板静默卡死
         window.addEventListener('error', function(event) {
             let msg = event.message || '未知腳本錯誤';
             if (msg === 'Script error.') {
-                msg = '語法錯誤：import 語句必須位於代碼最頂部，或代碼中存在其他嚴重語法錯誤。';
+                msg = '語法錯誤：请检查代码格式是否正确。';
             }
             window.parent.postMessage({ type: 'code-error', error: msg }, '*');
         });
+
+        // 专门捕获网络阻塞与 ESM 模块加载失败
+        window.addEventListener('unhandledrejection', function(event) {
+            let msg = '网络加载超时或受限，请检查设备网络';
+            if (event.reason) {
+                msg = event.reason.message || event.reason.toString();
+            }
+            window.parent.postMessage({ type: 'code-error', error: '模组加载失败: ' + msg }, '*');
+        });
     <\/script>
 
-    <!-- 【執行區】：動態編譯並掛載您的 React 代碼 -->
+    <!-- 【原生执行区】：将转换后的绝对路径代码交由浏览器原生执行 -->
     <script type="text/babel" data-presets="react" data-type="module">
-        import { createRoot } from 'react-dom/client';
+        import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client?external=react';
 
         // ============== 您的 React 代碼原封不動貼在這裡 ==============
-        ${code}
+        ${safeCode}
         // ============================================================
 
         try {
-            // 沙箱會自動幫您將 export default 的 App 組件掛載到畫面上
             const container = document.getElementById('react-app-root');
             const root = createRoot(container);
             root.render(<App />);
 
-            // 智能画布自适应：计算最佳比例并完美居中
+            // 稍微增加等待时间，确保网络较慢的平板能完整挂载 DOM
             setTimeout(() => {
                 const stageRect = stage.getBoundingClientRect(); 
                 const vpRect = viewport.getBoundingClientRect();
                 
-                // 自动缩小以适应屏幕宽度 (留白60px)
                 if (stageRect.width > vpRect.width - 60) {
                     scale = (vpRect.width - 60) / stageRect.width;
                 } else {
@@ -547,7 +524,7 @@
                 updateTransform();
 
                 window.parent.postMessage({ type: 'render-ready' }, '*');
-            }, 600);
+            }, 800);
 
         } catch(e) {
             window.parent.postMessage({ type: 'code-error', error: e.message }, '*');
