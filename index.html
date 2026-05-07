@@ -346,6 +346,9 @@
     <!-- 引入 Babel 實時編譯 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
 
+    <!-- 【关键修复 1】：引入 es-module-shims 兼容包，解决平板/旧版浏览器不支持 importmap 导致完全无法渲染的致命问题 -->
+    <script async src="https://unpkg.com/es-module-shims@1.10.0/dist/es-module-shims.js"><\/script>
+
     <!-- 【解決 React #31 錯誤的終極方案】：透過 Import Map 強制所有套件共用同一個 React 18.3.1 實例 -->
     <script type="importmap">
     {
@@ -373,6 +376,22 @@
     <script>
         // --- 拖拽与缩放逻辑引擎 ---
         const viewport = document.getElementById('viewport');
+        /* 无限画布视口 */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            cursor: grab;
+            /* 【关键修复 2】：禁用平板/手机浏览器原生的下拉刷新和边缘滑动，防止与画布拖拽冲突 */
+            touch-action: none; 
+        }
+        #viewport:active {
+            cursor: grabbing;
+        }
+    <!-- 画布控制、截圖與錯誤捕捉腳本 -->
+    <script>
+        // --- 拖拽与缩放逻辑引擎 ---
+        const viewport = document.getElementById('viewport');
         const stage = document.getElementById('canvas-stage');
         const rootElement = document.getElementById('capture-root');
 
@@ -386,10 +405,9 @@
             stage.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scale + ')';
         }
 
-        // 滚轮缩放
+        // 滚轮缩放 (PC 端)
         viewport.addEventListener('wheel', (e) => {
             e.preventDefault();
-            // 降低缩放灵敏度：从 10% 步长调整为 3% 步长，实现平滑缩放方便检查细节
             const delta = e.deltaY > 0 ? 0.97 : 1.03; 
             
             const rect = viewport.getBoundingClientRect();
@@ -398,18 +416,17 @@
 
             const prevScale = scale;
             scale *= delta;
-            scale = Math.min(Math.max(0.05, scale), 5); // 限制缩放至 5% - 500%
+            scale = Math.min(Math.max(0.05, scale), 5);
 
-            // 以鼠标位置为中心进行平移补偿
             translateX = mouseX - (mouseX - translateX) * (scale / prevScale);
             translateY = mouseY - (mouseY - translateY) * (scale / prevScale);
 
             updateTransform();
         }, { passive: false });
 
-        // 鼠标拖拽
+        // --- 鼠标拖拽 (PC 端) ---
         viewport.addEventListener('mousedown', (e) => {
-            if (e.button !== 0) return; // 仅响应左键
+            if (e.button !== 0) return; 
             isDragging = true;
             startX = e.clientX - translateX;
             startY = e.clientY - translateY;
@@ -424,6 +441,25 @@
 
         window.addEventListener('mouseup', () => { isDragging = false; });
         window.addEventListener('mouseleave', () => { isDragging = false; });
+
+        // --- 【关键修复 3：新增平板/手机触屏拖拽支持】 ---
+        viewport.addEventListener('touchstart', (e) => {
+            if (e.touches.length !== 1) return; // 仅支持单指拖拽，避免多指冲突
+            isDragging = true;
+            startX = e.touches[0].clientX - translateX;
+            startY = e.touches[0].clientY - translateY;
+        }, { passive: false });
+
+        window.addEventListener('touchmove', (e) => {
+            if (!isDragging || e.touches.length !== 1) return;
+            e.preventDefault(); // 阻止屏幕默认滚动
+            translateX = e.touches[0].clientX - startX;
+            translateY = e.touches[0].clientY - startY;
+            updateTransform();
+        }, { passive: false });
+
+        window.addEventListener('touchend', () => { isDragging = false; });
+        window.addEventListener('touchcancel', () => { isDragging = false; });
 
         // --- 核心截图通信 ---
         window.addEventListener('message', async function(event) {
