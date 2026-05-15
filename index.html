@@ -49,30 +49,7 @@
             transform: translateX(-100%);
         }
         
-        .code-editor-wrap {
-            position: relative;
-            flex: 1;
-            min-height: 0;
-            width: 100%;
-        }
-        #code-editor { flex: 1; width: 100%; height: 100%; position: relative; z-index: 2; background: transparent !important; }
-        #code-editor .ace_scroller,
-        #code-editor .ace_content,
-        #code-editor .ace_layer { background: transparent !important; }
-        #editor-placeholder {
-            position: absolute;
-            inset: 0;
-            z-index: 1;
-            padding: 8px 12px 8px 52px;
-            pointer-events: none;
-            color: #9ca3af;
-            font-size: 14px;
-            line-height: 1.65;
-            white-space: pre-wrap;
-            font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
-            overflow: hidden;
-        }
-        #editor-placeholder.hidden { display: none; }
+        #code-editor { flex: 1; width: 100%; height: 100%; }
 
         /* 加载动画样式 */
         .loader {
@@ -139,16 +116,7 @@
                 <i data-lucide="x" class="w-3.5 h-3.5"></i>
             </button>
         </div>
-        <div class="code-editor-wrap">
-            <div id="editor-placeholder" aria-hidden="true">👉 请在此处粘贴您的长图代码（支持 React / HTML）
-
-【全流程操作指引】
-1. 粘贴代码：粘贴完毕后，右侧画板将自动全景渲染
-2. 格式整理：若代码杂乱，可点击上方「格式化」按钮整理
-3. 一键清空：点击「清空」按钮可重置输入区
-4. 导出长图：渲染成功后，点击右上角「生成截图」自动保存高清长图</div>
-            <div id="code-editor"></div>
-        </div>
+        <div id="code-editor"></div>
     </aside>
 
     <!-- 下方 100% 占满的超大预览画布区域 -->
@@ -210,8 +178,15 @@
             useWorker: false
         });
 
-        // 右侧空输入时的内置引导页（仅注入 iframe，不写入左侧编辑器）
-        const ONBOARDING_PREVIEW_CODE = `import React from 'react';
+        // 默认模板：安全新手引导（不含任何个人保单或隐私字段；请整段替换为您的 export default App）
+        const defaultTemplate = `// 左侧为 React/JSX 入口：必须 export default function App() { ... }
+// 全流程：① 粘贴代码 → 右侧约 1 秒后自动刷新预览
+//         ② 点「格式化」可做简单换行（复杂排版请用本地 IDE）
+//         ③ 「清空」会删除全部内容，请谨慎
+//         ④ 预览区：左键拖拽平移、滚轮缩放；点「生成截图」导出 PNG
+// 隐私：请勿在示例或截图中保留真实姓名、证件号、保单号等敏感信息。
+
+import React from 'react';
 import {
   ClipboardPaste,
   Eye,
@@ -321,17 +296,8 @@ export default function App() {
     </div>
   );
 }`;
-
-        const editorPlaceholder = document.getElementById('editor-placeholder');
-
-        function updateEditorPlaceholder() {
-            if (!editorPlaceholder) return;
-            const isEmpty = !editor.getValue().trim();
-            editorPlaceholder.classList.toggle('hidden', !isEmpty);
-        }
-
-        editor.setValue('', -1);
-        updateEditorPlaceholder();
+        
+        editor.setValue(defaultTemplate, -1);
 
         // ==========================================
         // 2. 实时渲染与 Iframe 通信逻辑
@@ -363,8 +329,7 @@ export default function App() {
 
         function updatePreview() {
             setStatus('rendering');
-            const rawCode = editor.getValue();
-            const code = rawCode.trim() === '' ? ONBOARDING_PREVIEW_CODE : rawCode;
+            const code = editor.getValue();
             
             // 组装注入内容：应用原生 ESM + React + Babel 的超级沙箱，加入交互式画布控制
             const injectedHTML = `
@@ -606,7 +571,6 @@ export default function App() {
         }
 
         editor.session.on('change', function() {
-            updateEditorPlaceholder();
             clearTimeout(renderTimeout);
             renderTimeout = setTimeout(updatePreview, 1000);
         });
@@ -620,7 +584,6 @@ export default function App() {
         document.getElementById('btn-clear').addEventListener('click', () => {
             if(confirm('确定要清空所有代码吗？')) {
                 editor.setValue('', -1);
-                updateEditorPlaceholder();
                 if(codeDrawer.classList.contains('collapsed')) toggleDrawer(); // 清空时自动展开以便输入
                 editor.focus();
             }
