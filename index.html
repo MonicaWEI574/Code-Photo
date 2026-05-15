@@ -285,14 +285,18 @@
 
             setStatus('rendering');
 
-            // 【核心防崩溃兼容修复】：使用正则将裸引用（Bare Imports）全部替换为绝对 URL
-            // 这样就彻底抛弃了脆弱的 Importmap 依赖，任何旧版平板/Safari 都能原生识别执行。
-            let safeCode = rawCode
-                .replace(/(from\s+['"])react(['"])/g, "$1https://esm.sh/react@18.3.1$2")
-                .replace(/(from\s+['"])lucide-react(['"])/g, "$1https://esm.sh/lucide-react@0.378.0?external=react,react-dom$2")
-                .replace(/(from\s+['"])react-dom\/client(['"])/g, "$1https://esm.sh/react-dom@18.3.1/client?external=react$2");
+            // 【终极防崩溃兼容修复】：使用智能正则拦截所有裸引用（Bare Imports），并强制 CDN 解析依赖，彻底告别 ImportMap 和多实例冲突！
+            let safeCode = rawCode.replace(/(?:import|from)\s+['"]([^'.\/][^'"]*)['"]/g, (match, pkg) => {
+                // 核心库锁定版本
+                if (pkg === 'react') return match.replace(pkg, 'https://esm.sh/react@18.3.1');
+                if (pkg === 'react-dom/client') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1/client');
+                // Lucide 锁定版本及依赖传递
+                if (pkg === 'lucide-react') return match.replace(pkg, 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1,react-dom@18.3.1');
+                // 自动应对其他可能引入的库（强制复用基础版本）
+                return match.replace(pkg, `https://esm.sh/${pkg}?deps=react@18.3.1,react-dom@18.3.1`);
+            });
             
-            // 组装注入内容：原生直连模式，无 polyfill 负担
+            // 组装注入内容：绝对路径原生直连模式
             const injectedHTML = `
 <!DOCTYPE html>
 <html>
@@ -348,7 +352,6 @@
     <script src="https://cdn.tailwindcss.com"><\/script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-    <!-- 注意：此版本彻底移除 importmap 和 es-module-shims，回归最高兼容度的绝对路径模式 -->
 </head>
 <body>
     <div id="viewport">
@@ -496,7 +499,7 @@
 
     <!-- 【原生执行区】：将转换后的绝对路径代码交由浏览器原生执行 -->
     <script type="text/babel" data-presets="react" data-type="module">
-        import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client?external=react';
+        import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
 
         // ============== 您的 React 代碼原封不動貼在這裡 ==============
         ${safeCode}
