@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Canvas 长图自动化工具 - 双核全兼容版</title>
+    <title>Canvas 长图自动化工具</title>
     <!-- 使用 Tailwind CSS 进行轻量级快速布局 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Ace Editor 提供代码语法高亮 -->
@@ -21,7 +21,7 @@
         .preview-container {
             width: 100vw;
             height: calc(100vh - 50px);
-            overflow: hidden; 
+            overflow: hidden; /* 改为 hidden，交由内部无限画布接管 */
             position: relative;
         }
         
@@ -62,7 +62,7 @@
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         
-        /* 自定义滚动条 */
+        /* 自定义滚动条更贴近 PS 风格 */
         ::-webkit-scrollbar { width: 12px; height: 12px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 1px solid #ddd; border-top: 1px solid #ddd; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 6px; border: 2px solid #f1f1f1; }
@@ -71,7 +71,7 @@
 </head>
 <body class="text-gray-800 antialiased flex flex-col h-screen">
 
-    <!-- 顶部极简工具栏 -->
+    <!-- 顶部极简工具栏 (约 50px 高度) -->
     <header class="toolbar bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-50 relative">
         <div class="flex items-center gap-4">
             <!-- 切换代码编辑器的开关 -->
@@ -81,7 +81,7 @@
             </button>
             <div class="w-px h-5 bg-gray-300 mx-1"></div>
             <!-- 状态指示器 -->
-            <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 transition-colors whitespace-nowrap flex items-center gap-1">
+            <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 transition-colors whitespace-nowrap flex items-center gap-1" title="页面加载完成后，可在此查看沙箱渲染状态；出错时悬停可看简要原因">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span> 等待输入
             </span>
             <div class="w-px h-4 bg-gray-300 mx-1 hidden sm:block"></div>
@@ -111,7 +111,7 @@
     <!-- 悬浮代码编辑器抽屉 (默认展开) -->
     <aside id="code-drawer" class="code-drawer">
         <div class="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500 border-b flex justify-between items-center">
-            <span>HTML / React 输入区 (自动识别)</span>
+            <span>HTML / CSS / JS 输入区 (自动识别)</span>
             <button id="btn-close-drawer-inner" class="text-gray-400 hover:text-gray-700 p-1 rounded-sm hover:bg-gray-200 transition">
                 <i data-lucide="x" class="w-3.5 h-3.5"></i>
             </button>
@@ -166,30 +166,57 @@
         btnCloseDrawerInner.addEventListener('click', toggleDrawer);
 
         // ==========================================
-        // 1. 初始化代码编辑器
+        // 1. 初始化代码编辑器 (Ace Editor)
         // ==========================================
         const editor = ace.edit(editorDiv);
         editor.setTheme("ace/theme/chrome");
         editor.session.setMode("ace/mode/jsx"); 
-        editor.setOptions({ fontSize: "14px", showPrintMargin: false, wrap: true, useWorker: false });
+        editor.setOptions({
+            fontSize: "14px",
+            showPrintMargin: false,
+            wrap: true,
+            useWorker: false
+        });
 
-        editor.setValue(`<!-- 
-✨ 欢迎使用全新【双核全兼容版】长图自动化工具！
+        // 默认安全的 React 引导模板，避免解析报错
+        const defaultTemplate = `// 左侧为输入区：支持粘贴纯 React/JSX 组件 或 完整的 HTML 网页！
+//
+// ✨ 全能渲染：无论什么格式，只要粘贴进来，工具会自动识别并完美渲染。
+// 🚀 防截断：自带高度破解引擎，即便代码中有 h-screen 也能完整导出全景长图。
+// 
+// 请粘贴代码，等右侧加载完毕后，点击右上角「生成截图」即可保存。
 
-🚀 现在，您可以随意粘贴以下任何一种格式的代码，工具都会自动识别并完美渲染：
-   1. 纯 React (JSX) 代码片段 (包含 import 语句)
-   2. 完整的 HTML 网页文件 (包含 <!DOCTYPE html> 和 <body> 标签)
+import React from 'react';
+import { Sparkles, Image as ImageIcon } from 'lucide-react';
 
-👉 请直接清空左侧代码，然后粘贴您的内容即可秒出图！
--->`, -1);
+export default function App() {
+  return (
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-10 font-sans text-slate-600">
+      <div className="max-w-xl text-center space-y-4">
+        <div className="flex justify-center mb-6">
+          <div className="p-4 bg-blue-100 text-blue-600 rounded-2xl shadow-sm">
+            <ImageIcon size={40} />
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold text-slate-800 flex items-center justify-center gap-2">
+          <Sparkles className="text-blue-500" /> Canvas 全能长图自动化工具
+        </h1>
+        <p className="text-sm">准备就绪，等待贴入您的代码...</p>
+      </div>
+    </div>
+  );
+}`;
+
+        editor.setValue(defaultTemplate, -1);
 
         // ==========================================
-        // 2. 核心智能渲染逻辑（双核识别解析）
+        // 2. 实时渲染与 Iframe 通信逻辑 (核心双路解析)
         // ==========================================
         let renderTimeout;
 
         function setStatus(status) {
             statusBadge.className = 'px-2.5 py-1 rounded text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1';
+            statusBadge.title = '';
             if (status === 'rendering') {
                 statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span> 代码渲染中';
                 statusBadge.classList.add('bg-yellow-50', 'text-yellow-700', 'border', 'border-yellow-200');
@@ -209,102 +236,69 @@
             }
         }
 
-        function updatePreview() {
-            setStatus('rendering');
-            const rawCode = editor.getValue();
-            
-            // 欢迎界面
-            if (!rawCode.trim()) {
-                setStatus('waiting');
-                renderFrame.srcdoc = `<body style="margin:0;display:flex;align-items:center;justify-content:center;height:100vh;background:#f8fafc;font-family:sans-serif;color:#64748b;"><h2>👉 请在左侧粘贴您的代码 (支持纯 HTML 或 React)</h2></body>`;
-                return;
-            }
+        // 提取防截断 CSS 和画板交互控制 JS 为通用变量
+        const antiTruncateCSS = `
+        <style id="anti-truncate">
+            /* 🌟【终极防截断魔法：强制破解高度锁定与内部滚动】🌟 */
+            .h-screen, .min-h-screen, .max-h-screen, .h-full { height: auto !important; min-height: 100% !important; max-height: none !important; }
+            .overflow-hidden, .overflow-y-auto, .overflow-x-hidden, .overflow-auto, .hide-scrollbar { overflow: visible !important; }
+            .sticky, .fixed { position: relative !important; top: auto !important; bottom: auto !important; left: auto !important; right: auto !important; z-index: 1 !important; }
+        </style>`;
 
-            // 【第一重智能识别】：检测是否为完整 HTML 结构
-            const isFullHTML = /<!DOCTYPE\s+html>/i.test(rawCode) || /<html/i.test(rawCode);
+        const controlScripts = `
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"><\/script>
+        <script>
+            window.addEventListener('error', function(e) { if(e.message === 'Script error.') return; window.parent.postMessage({ type: 'code-error', error: e.message }, '*'); });
 
-            // 【安全依赖转换】：无论何种模式，都自动将第三方库重定向为绝对安全的 ESM CDN 链接
-            let safeCode = rawCode.replace(/(?:import|from)\s+['"]([^'.\/][^'"]*)['"]/g, (match, pkg) => {
-                if (pkg === 'react') return match.replace(pkg, 'https://esm.sh/react@18.3.1');
-                if (pkg === 'react-dom/client') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1/client');
-                if (pkg === 'react-dom') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1');
-                if (pkg === 'lucide-react') return match.replace(pkg, 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1,react-dom@18.3.1');
-                return match.replace(pkg, `https://esm.sh/${pkg}?deps=react@18.3.1,react-dom@18.3.1`);
-            });
+            setTimeout(() => {
+                const isReactMode = !!document.getElementById('tool-canvas-stage');
+                const viewport = isReactMode ? document.getElementById('viewport') : document.documentElement;
+                const stage = isReactMode ? document.getElementById('tool-canvas-stage') : document.body;
+                const rootElement = isReactMode ? document.getElementById('capture-root') : document.body;
 
-            // 工具所需的统一控制脚本 (画布拖拽、缩放、截图核心)
-            const controlScripts = `
-            <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"><\/script>
-            <script>
-                // 全局错误捕获，避免白屏
-                window.addEventListener('error', function(e) {
-                    window.parent.postMessage({ type: 'code-error', error: e.message || '语法错误' }, '*');
-                });
-                window.addEventListener('unhandledrejection', function(e) {
-                    window.parent.postMessage({ type: 'code-error', error: '模块加载受限' }, '*');
-                });
-
-                const viewport = document.getElementById('tool-viewport') || document.body;
-                const stage = document.getElementById('tool-canvas-stage') || document.body;
-                const rootElement = document.getElementById('tool-capture-root') || document.body;
+                if (!isReactMode) {
+                    // 全 HTML 模式，直接改造 body 使其支持画板功能
+                    document.documentElement.style.overflow = 'hidden';
+                    document.documentElement.style.backgroundColor = '#e5e5e5';
+                    document.body.style.transformOrigin = '0 0';
+                    document.body.style.margin = '40px auto';
+                    document.body.style.minWidth = 'calc(100vw - 80px)';
+                    document.body.style.width = 'max-content';
+                    document.body.style.boxShadow = '0 20px 60px -15px rgba(0,0,0,0.1)';
+                    document.body.style.backgroundColor = '#fff';
+                    document.body.style.position = 'absolute';
+                }
 
                 let scale = 1, translateX = 0, translateY = 0, isDragging = false, startX, startY;
 
                 function updateTransform() {
-                    if(stage !== document.body) {
-                        stage.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scale + ')';
-                    }
+                    stage.style.transform = 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scale + ')';
                 }
 
-                // 缩放逻辑
-                viewport.addEventListener('wheel', (e) => {
-                    if (stage === document.body) return;
+                window.addEventListener('wheel', (e) => {
                     e.preventDefault();
                     const delta = e.deltaY > 0 ? 0.97 : 1.03; 
-                    const rect = viewport.getBoundingClientRect();
-                    const mouseX = e.clientX - rect.left;
-                    const mouseY = e.clientY - rect.top;
+                    const mouseX = e.clientX; const mouseY = e.clientY;
                     const prevScale = scale;
-                    scale *= delta;
-                    scale = Math.min(Math.max(0.05, scale), 5);
+                    scale *= delta; scale = Math.min(Math.max(0.05, scale), 5);
                     translateX = mouseX - (mouseX - translateX) * (scale / prevScale);
                     translateY = mouseY - (mouseY - translateY) * (scale / prevScale);
                     updateTransform();
                 }, { passive: false });
 
-                // 拖拽逻辑 (鼠标 + 触摸)
-                viewport.addEventListener('mousedown', (e) => {
-                    if (e.button !== 0 || stage === document.body) return; 
-                    isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY;
-                });
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; updateTransform();
-                });
+                window.addEventListener('mousedown', (e) => { if (e.button !== 0) return; isDragging = true; startX = e.clientX - translateX; startY = e.clientY - translateY; });
+                window.addEventListener('mousemove', (e) => { if (!isDragging) return; translateX = e.clientX - startX; translateY = e.clientY - startY; updateTransform(); });
                 window.addEventListener('mouseup', () => isDragging = false);
                 window.addEventListener('mouseleave', () => isDragging = false);
 
-                viewport.addEventListener('touchstart', (e) => {
-                    if (e.touches.length !== 1 || stage === document.body) return; 
-                    isDragging = true; startX = e.touches[0].clientX - translateX; startY = e.touches[0].clientY - translateY;
-                }, { passive: false });
-                window.addEventListener('touchmove', (e) => {
-                    if (!isDragging || e.touches.length !== 1) return;
-                    e.preventDefault(); translateX = e.touches[0].clientX - startX; translateY = e.touches[0].clientY - startY; updateTransform();
-                }, { passive: false });
-                window.addEventListener('touchend', () => isDragging = false);
-
-                // 核心截图逻辑
                 window.addEventListener('message', async function(event) {
                     if (event.data === 'take-screenshot') {
+                        var oldTransform = stage.style.transform;
                         try {
                             await new Promise(resolve => setTimeout(resolve, 800)); 
-                            const oldTransform = stage.style.transform;
-                            if(stage !== document.body) {
-                                stage.style.transform = 'none';
-                                stage.getBoundingClientRect();
-                                await new Promise(r => requestAnimationFrame(r));
-                                await new Promise(r => requestAnimationFrame(r)); 
-                            }
+                            stage.style.transform = 'none';
+                            stage.getBoundingClientRect();
+                            await new Promise(r => requestAnimationFrame(r)); await new Promise(r => requestAnimationFrame(r)); 
 
                             const captureWidth = rootElement.scrollWidth;
                             const captureHeight = Math.max(rootElement.scrollHeight, rootElement.offsetHeight);
@@ -315,105 +309,123 @@
                                 width: captureWidth, height: captureHeight,
                                 useCORS: true, allowTaint: true, backgroundColor: '#ffffff', scale: window.devicePixelRatio || 2, logging: false
                             }).then(canvas => {
-                                if(stage !== document.body) stage.style.transform = oldTransform; 
+                                stage.style.transform = oldTransform; 
                                 window.parent.postMessage({ type: 'capture-success', data: canvas.toDataURL('image/png', 1.0) }, '*');
                             }).catch(err => {
-                                if(stage !== document.body) stage.style.transform = oldTransform;
-                                window.parent.postMessage({ type: 'capture-error', error: err.message }, '*');
+                                stage.style.transform = oldTransform; window.parent.postMessage({ type: 'capture-error', error: err.message }, '*');
                             });
                         } catch (e) {
-                            if(stage !== document.body) stage.style.transform = oldTransform;
-                            window.parent.postMessage({ type: 'capture-error', error: e.message }, '*');
+                             stage.style.transform = oldTransform; window.parent.postMessage({ type: 'capture-error', error: e.message }, '*');
                         }
                     }
                 });
 
-                // 自动居中与就绪通知
-                setTimeout(() => {
-                    if(stage !== document.body) {
-                        const stageRect = stage.getBoundingClientRect(); 
-                        const vpRect = viewport.getBoundingClientRect();
-                        if (stageRect.width > vpRect.width - 60) scale = (vpRect.width - 60) / stageRect.width;
-                        translateX = (vpRect.width - stageRect.width * scale) / 2;
-                        translateY = Math.max((vpRect.height - stageRect.height * scale) / 2, 20); 
-                        updateTransform();
-                    }
-                    window.parent.postMessage({ type: 'render-ready' }, '*');
-                }, 800);
-            <\/script>`;
+                // Auto-center
+                const stageRect = stage.getBoundingClientRect(); 
+                const vpWidth = window.innerWidth; const vpHeight = window.innerHeight;
+                if (stageRect.width > vpWidth - 60) scale = (vpWidth - 60) / stageRect.width;
+                translateX = (vpWidth - stageRect.width * scale) / 2;
+                translateY = Math.max((vpHeight - stageRect.height * scale) / 2, 20); 
+                updateTransform();
+                
+                window.parent.postMessage({ type: 'render-ready' }, '*');
+            }, 600);
+        <\/script>`;
+
+        function updatePreview() {
+            setStatus('rendering');
+            const rawCode = editor.getValue();
+            
+            if (!rawCode.trim()) {
+                setStatus('waiting');
+                renderFrame.srcdoc = `<body><h2 style="font-family:sans-serif;color:#64748b;text-align:center;margin-top:20vh;">👉 请在左侧粘贴代码</h2></body>`;
+                return;
+            }
+
+            // 智能识别代码格式
+            const isFullHTML = /<!DOCTYPE\s+html>/i.test(rawCode) || /<html/i.test(rawCode);
 
             let injectedHTML = '';
 
             if (isFullHTML) {
-                // =============== 模式一：完整 HTML 模式 ===============
-                // 在不破坏用户原本代码结构的前提下，强制注入画板容器
-                let html = safeCode;
-                
-                const cssInjection = `
-                <style>
-                    /* 强制覆盖外层环境，打造暗色画板背景 */
-                    html, body { overflow: hidden !important; width: 100vw !important; height: 100vh !important; margin: 0; padding: 0; background: #e5e5e5; }
-                    #tool-viewport { width: 100vw; height: 100vh; position: relative; cursor: grab; touch-action: none; overflow: hidden; }
-                    #tool-viewport:active { cursor: grabbing; }
-                    #tool-canvas-stage { position: absolute; transform-origin: 0 0; will-change: transform; padding: 40px; box-sizing: border-box; display: inline-block; min-width: 100%; min-height: 100%; }
-                    #tool-capture-root { width: max-content; min-width: 100%; min-height: 100%; max-width: none; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.1); background: #fff; position: relative; }
-                </style>`;
-                
-                if (html.includes('</head>')) html = html.replace('</head>', cssInjection + '</head>');
-                else html = html.replace('<html', '<html' + cssInjection);
-
-                // 智能捕获用户的 body 内容并包裹画板容器
-                const bodyRegex = /<body[^>]*>/i;
-                const bodyMatch = html.match(bodyRegex);
-                if (bodyMatch) {
-                    const parts = html.split(bodyMatch[0]);
-                    html = parts[0] + bodyMatch[0] + '<div id="tool-viewport"><div id="tool-canvas-stage"><div id="tool-capture-root">' + parts[1];
-                    html = html.replace(/<\/body>/i, '</div></div></div>' + controlScripts + '</body>');
+                // =============== 路径 A: 处理完整 HTML 网页 ===============
+                let html = rawCode;
+                // 1. 注入防截断 CSS 到 head
+                if (html.includes('</head>')) {
+                    html = html.replace('</head>', antiTruncateCSS + '</head>');
                 } else {
-                    html += controlScripts; 
+                    html = antiTruncateCSS + html; 
                 }
-
+                // 2. 注入截屏与画板引擎到 body 尾部
+                if (html.includes('</body>')) {
+                    html = html.replace('</body>', controlScripts + '</body>');
+                } else {
+                    html += controlScripts;
+                }
                 injectedHTML = html;
+            } 
+            else {
+                // =============== 路径 B: 处理纯 React / JSX (原版稳定架构) ===============
+                // 对纯 React 做 CDN 映射替换
+                let safeCode = rawCode.replace(/(?:import|from)\s+['"]([^'.\/][^'"]*)['"]/g, (match, pkg) => {
+                    if (pkg === 'react') return match.replace(pkg, 'https://esm.sh/react@18.3.1');
+                    if (pkg === 'react-dom/client') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1/client');
+                    if (pkg === 'react-dom') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1');
+                    if (pkg === 'lucide-react') return match.replace(pkg, 'https://esm.sh/lucide-react@0.378.0?deps=react@18.3.1,react-dom@18.3.1');
+                    return match.replace(pkg, `https://esm.sh/${pkg}?deps=react@18.3.1,react-dom@18.3.1`);
+                });
 
-            } else {
-                // =============== 模式二：纯 React / JSX 模式 ===============
                 injectedHTML = `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <meta charset="utf-8">
-                    <style>
-                        html, body { overflow: hidden !important; width: 100vw !important; height: 100vh !important; margin: 0; padding: 0; background: #e5e5e5; }
-                        #tool-viewport { width: 100vw; height: 100vh; position: relative; cursor: grab; touch-action: none; overflow: hidden; }
-                        #tool-viewport:active { cursor: grabbing; }
-                        #tool-canvas-stage { position: absolute; transform-origin: 0 0; will-change: transform; padding: 40px; box-sizing: border-box; display: inline-block; min-width: 100%; min-height: 100%; }
-                        #tool-capture-root { width: max-content; min-width: 100%; min-height: 100%; max-width: none; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.1); background: #fff; position: relative; }
-                    </style>
-                    <script src="https://cdn.tailwindcss.com"><\/script>
-                    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
-                </head>
-                <body>
-                    <div id="tool-viewport">
-                        <div id="tool-canvas-stage">
-                            <div id="tool-capture-root">
-                                <div id="react-app-root"></div>
-                            </div>
-                        </div>
-                    </div>
-                    ${controlScripts}
-                    <script type="text/babel" data-presets="react" data-type="module">
-                        import { createRoot } from 'https://esm.sh/react-dom@18.3.1/client';
-                        ${safeCode}
-                        try {
-                            const container = document.getElementById('react-app-root');
-                            const root = createRoot(container);
-                            root.render(<App />);
-                        } catch(e) {
-                            window.parent.postMessage({ type: 'code-error', error: e.message }, '*');
-                        }
-                    <\/script>
-                </body>
-                </html>`;
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        html, body { margin: 0 !important; padding: 0 !important; width: 100vw !important; height: 100vh !important; overflow: hidden !important; background-color: #e5e5e5; user-select: none; -webkit-user-select: none; }
+        #viewport { width: 100vw; height: 100vh; position: relative; cursor: grab; }
+        #viewport:active { cursor: grabbing; }
+        #tool-canvas-stage { position: absolute; transform-origin: 0 0; will-change: transform; padding: 40px; box-sizing: border-box; display: inline-block; }
+        #capture-root { width: max-content; max-width: none; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.1); background: #fff; user-select: auto; -webkit-user-select: auto; cursor: auto; }
+    </style>
+    ${antiTruncateCSS}
+    <script src="https://cdn.tailwindcss.com"><\/script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.3.1",
+        "react/jsx-runtime": "https://esm.sh/react@18.3.1/jsx-runtime",
+        "react-dom": "https://esm.sh/react-dom@18.3.1?external=react",
+        "react-dom/client": "https://esm.sh/react-dom@18.3.1/client?external=react",
+        "lucide-react": "https://esm.sh/lucide-react@0.378.0?external=react,react-dom"
+      }
+    }
+    <\/script>
+</head>
+<body>
+    <div id="viewport">
+        <div id="tool-canvas-stage">
+            <div id="capture-root">
+                <div id="react-app-root"></div>
+            </div>
+        </div>
+    </div>
+    
+    ${controlScripts}
+
+    <script type="text/babel" data-presets="react" data-type="module">
+        import { createRoot } from 'react-dom/client';
+        ${safeCode}
+        try {
+            const container = document.getElementById('react-app-root');
+            const root = createRoot(container);
+            root.render(<App />);
+        } catch(e) {
+            window.parent.postMessage({ type: 'code-error', error: e.message }, '*');
+        }
+    <\/script>
+</body>
+</html>`;
             }
 
             renderFrame.srcdoc = injectedHTML;
@@ -433,7 +445,7 @@
         document.getElementById('btn-clear').addEventListener('click', () => {
             if(confirm('确定要清空所有代码吗？')) {
                 editor.setValue('', -1);
-                if(codeDrawer.classList.contains('collapsed')) toggleDrawer();
+                if(codeDrawer.classList.contains('collapsed')) toggleDrawer(); // 清空时自动展开以便输入
                 editor.focus();
             }
         });
@@ -468,7 +480,7 @@
             } 
             else if (msg.type === 'code-error') {
                 setStatus('error');
-                console.error('[canvas-tool] 沙箱内代码运行错误:', msg.error);
+                statusBadge.title = '错误详情（调试用）: ' + (msg.error || '未知错误');
             }
             else if (msg.type === 'capture-success') {
                 captureOverlay.classList.add('hidden');
@@ -496,7 +508,7 @@
             else if (msg.type === 'capture-error') {
                 captureOverlay.classList.add('hidden');
                 setStatus('error');
-                alert('截图生成失败：' + (msg.error || '未知错误，请打开控制台查看'));
+                alert('截图生成失败：' + (msg.error || '未知错误，请检查代码'));
             }
         });
     </script>
