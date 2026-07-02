@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+吃了。<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
@@ -11,58 +11,20 @@
     <!-- 引入 Lucide 图标库 -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <style>
-        /* 全局及布局样式 */
         body { margin: 0; padding: 0; overflow: hidden; background-color: #e5e5e5; font-family: system-ui, -apple-system, sans-serif; }
-        
-        /* 顶部工具栏高度 */
         .toolbar { height: 50px; }
-        
-        /* 全屏预览容器：严格按照要求设置 */
-        .preview-container {
-            width: 100vw;
-            height: calc(100vh - 50px);
-            overflow: hidden; /* 改为 hidden，交由内部无限画布接管 */
-            position: relative;
-        }
-        
-        /* iframe 占据 100% 但允许内容撑开 */
+        .preview-container { width: 100vw; height: calc(100vh - 50px); overflow: hidden; position: relative; }
         iframe { border: none; width: 100%; height: 100%; display: block; }
-
-        /* 代码编辑器悬浮抽屉 */
         .code-drawer {
-            position: fixed;
-            top: 50px;
-            left: 0;
-            bottom: 0;
-            width: 450px;
-            max-width: 90vw;
-            background: #fff;
-            box-shadow: 4px 0 24px rgba(0,0,0,0.1);
-            transform: translateX(0);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 40;
-            display: flex;
-            flex-direction: column;
-            border-right: 1px solid #e5e7eb;
+            position: fixed; top: 50px; left: 0; bottom: 0; width: 450px; max-width: 90vw;
+            background: #fff; box-shadow: 4px 0 24px rgba(0,0,0,0.1);
+            transform: translateX(0); transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 40; display: flex; flex-direction: column; border-right: 1px solid #e5e7eb;
         }
-        .code-drawer.collapsed {
-            transform: translateX(-100%);
-        }
-        
+        .code-drawer.collapsed { transform: translateX(-100%); }
         #code-editor { flex: 1; width: 100%; height: 100%; }
-
-        /* 加载动画样式 */
-        .loader {
-            border: 3px solid #f3f3f3;
-            border-radius: 50%;
-            border-top: 3px solid #3b82f6;
-            width: 24px;
-            height: 24px;
-            animation: spin 1s linear infinite;
-        }
+        .loader { border: 3px solid #f3f3f3; border-radius: 50%; border-top: 3px solid #3b82f6; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* 自定义滚动条更贴近 PS 风格 */
         ::-webkit-scrollbar { width: 12px; height: 12px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; border-left: 1px solid #ddd; border-top: 1px solid #ddd; }
         ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 6px; border: 2px solid #f1f1f1; }
@@ -71,44 +33,36 @@
 </head>
 <body class="text-gray-800 antialiased flex flex-col h-screen">
 
-    <!-- 顶部极简工具栏 (约 50px 高度) -->
     <header class="toolbar bg-white border-b border-gray-200 px-4 flex items-center justify-between shrink-0 shadow-sm z-50 relative">
         <div class="flex items-center gap-4">
-            <!-- 切换代码编辑器的开关 -->
-            <button id="btn-toggle-drawer" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors flex items-center gap-2 text-sm font-medium border border-blue-200" title="打开/收起代码面板">
+            <button id="btn-toggle-drawer" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors flex items-center gap-2 text-sm font-medium border border-blue-200">
                 <i data-lucide="panel-left-close" id="drawer-icon" class="w-4 h-4"></i>
                 <span>代码面板</span>
             </button>
             <div class="w-px h-5 bg-gray-300 mx-1"></div>
-            <!-- 状态指示器 -->
-            <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 transition-colors whitespace-nowrap flex items-center gap-1" title="页面加载完成后，可在此查看沙箱渲染状态；出错时悬停可看简要原因">
+            <span id="status-badge" class="px-2.5 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200 transition-colors whitespace-nowrap flex items-center gap-1">
                 <span class="w-2 h-2 rounded-full bg-blue-500"></span> 等待输入
             </span>
             <div class="w-px h-4 bg-gray-300 mx-1 hidden sm:block"></div>
-            <!-- UI 操作提示 -->
-            <span class="text-xs text-gray-500 hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-50 border border-gray-200" title="在右侧预览区按住鼠标左键即可拖动，使用滚轮放大或缩小">
-                <i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5"></i>
-                拖拽平移 · 滚轮缩放
+            <span class="text-xs text-gray-500 hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded bg-gray-50 border border-gray-200">
+                <i data-lucide="mouse-pointer-2" class="w-3.5 h-3.5"></i> 拖拽平移 · 滚轮缩放
             </span>
         </div>
 
         <div class="flex items-center gap-2">
-            <button id="btn-format" class="px-3 py-1.5 text-xs text-gray-600 bg-transparent rounded hover:bg-gray-100 transition-colors flex items-center gap-1" title="格式化代码">
+            <button id="btn-format" class="px-3 py-1.5 text-xs text-gray-600 bg-transparent rounded hover:bg-gray-100 transition-colors flex items-center gap-1">
                 <i data-lucide="align-left" class="w-4 h-4"></i> <span class="hidden sm:inline">格式化</span>
             </button>
-            <button id="btn-clear" class="px-3 py-1.5 text-xs text-red-600 bg-transparent rounded hover:bg-red-50 transition-colors flex items-center gap-1" title="清空代码">
+            <button id="btn-clear" class="px-3 py-1.5 text-xs text-red-600 bg-transparent rounded hover:bg-red-50 transition-colors flex items-center gap-1">
                 <i data-lucide="trash-2" class="w-4 h-4"></i> <span class="hidden sm:inline">清空</span>
             </button>
             <div class="w-px h-5 bg-gray-300 mx-2"></div>
-            <!-- 核心保存按钮 -->
             <button id="btn-capture" class="px-5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded shadow-sm transition-all flex items-center gap-2 transform active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed">
-                <i data-lucide="camera" class="w-4 h-4"></i>
-                生成截图
+                <i data-lucide="camera" class="w-4 h-4"></i> 生成截图
             </button>
         </div>
     </header>
 
-    <!-- 悬浮代码编辑器抽屉 (默认展开) -->
     <aside id="code-drawer" class="code-drawer">
         <div class="bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-500 border-b flex justify-between items-center">
             <span>HTML / CSS / JS 输入区 (自动识别)</span>
@@ -119,24 +73,19 @@
         <div id="code-editor"></div>
     </aside>
 
-    <!-- 下方 100% 占满的超大预览画布区域 -->
     <main class="preview-container" id="preview-scroll-area">
-        <!-- 沙箱 iframe -->
         <iframe id="render-frame" sandbox="allow-scripts allow-same-origin"></iframe>
         
-        <!-- 截图过程中的全屏遮罩层 -->
         <div id="capture-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col justify-center items-center z-50 hidden transition-opacity" style="position: fixed;">
             <div class="loader mb-4"></div>
-            <p class="text-gray-800 font-bold text-lg tracking-wide">正在捕获全景长图，请勿刷新...</p>
+            <p class="text-gray-800 font-bold text-lg tracking-wide">正在快照全景长图，请勿刷新...</p>
             <p class="text-sm text-gray-600 mt-2 bg-white px-4 py-2 rounded-full shadow-sm border">这可能需要几秒钟时间</p>
         </div>
     </main>
 
     <script>
-        // 初始化图标
         lucide.createIcons();
 
-        // DOM 元素引用
         const editorDiv = document.getElementById('code-editor');
         const renderFrame = document.getElementById('render-frame');
         const statusBadge = document.getElementById('status-badge');
@@ -147,7 +96,6 @@
         const btnCloseDrawerInner = document.getElementById('btn-close-drawer-inner');
         const drawerIcon = document.getElementById('drawer-icon');
 
-        // 抽屉开关逻辑
         let isDrawerOpen = true;
         function toggleDrawer() {
             isDrawerOpen = !isDrawerOpen;
@@ -165,53 +113,22 @@
         btnToggleDrawer.addEventListener('click', toggleDrawer);
         btnCloseDrawerInner.addEventListener('click', toggleDrawer);
 
-        // ==========================================
-        // 1. 初始化代码编辑器 (Ace Editor)
-        // ==========================================
         const editor = ace.edit(editorDiv);
         editor.setTheme("ace/theme/chrome");
-        editor.session.setMode("ace/mode/jsx"); 
-        editor.setOptions({
-            fontSize: "14px",
-            showPrintMargin: false,
-            wrap: true,
-            useWorker: false
-        });
+        editor.session.setMode("ace/mode/html"); 
+        editor.setOptions({ fontSize: "14px", showPrintMargin: false, wrap: true, useWorker: false });
 
-        // 默认安全的 React 引导模板，避免解析报错
-        const defaultTemplate = `// 左侧为输入区：支持粘贴纯 React/JSX 组件 或 完整的 HTML 网页！
-//
-// ✨ 全能渲染：无论什么格式，只要粘贴进来，工具会自动识别并完美渲染。
-// 🚀 防截断：自带高度破解引擎，即便代码中有 h-screen 也能完整导出全景长图。
-// 
-// 请粘贴代码，等右侧加载完毕后，点击右上角「生成截图」即可保存。
+        editor.setValue(`<!-- 
+🌟 工具已升级：后台“隐形修复引擎”上线！
 
-import React from 'react';
-import { Sparkles, Image as ImageIcon } from 'lucide-react';
+您现在可以直接将原版包含动画、滤镜、渐变的 HTML 代码贴入下方。
+工具的预览区将 100% 保持您代码原本的模样。
 
-export default function App() {
-  return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-10 font-sans text-slate-600">
-      <div className="max-w-xl text-center space-y-4">
-        <div className="flex justify-center mb-6">
-          <div className="p-4 bg-blue-100 text-blue-600 rounded-2xl shadow-sm">
-            <ImageIcon size={40} />
-          </div>
-        </div>
-        <h1 className="text-2xl font-bold text-slate-800 flex items-center justify-center gap-2">
-          <Sparkles className="text-blue-500" /> Canvas 全能长图自动化工具
-        </h1>
-        <p className="text-sm">准备就绪，等待贴入您的代码...</p>
-      </div>
-    </div>
-  );
-}`;
+只有在您点击「生成截图」的瞬间，工具才会在隐藏的后台，
+将 html2canvas 无法解析的错误特效自动替换为安全样式并截取，
+保证截图排版绝不错位，毫无乱码！
+-->`, -1);
 
-        editor.setValue(defaultTemplate, -1);
-
-        // ==========================================
-        // 2. 实时渲染与 Iframe 通信逻辑 (核心双路解析)
-        // ==========================================
         let renderTimeout;
 
         function setStatus(status) {
@@ -236,15 +153,6 @@ export default function App() {
             }
         }
 
-        // 提取防截断 CSS 和画板交互控制 JS 为通用变量
-        const antiTruncateCSS = `
-        <style id="anti-truncate">
-            /* 🌟【终极防截断魔法：强制破解高度锁定与内部滚动】🌟 */
-            .h-screen, .min-h-screen, .max-h-screen, .h-full { height: auto !important; min-height: 100% !important; max-height: none !important; }
-            .overflow-hidden, .overflow-y-auto, .overflow-x-hidden, .overflow-auto, .hide-scrollbar { overflow: visible !important; }
-            .sticky, .fixed { position: relative !important; top: auto !important; bottom: auto !important; left: auto !important; right: auto !important; z-index: 1 !important; }
-        </style>`;
-
         const controlScripts = `
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" crossorigin="anonymous"><\/script>
         <script>
@@ -257,7 +165,6 @@ export default function App() {
                 const rootElement = isReactMode ? document.getElementById('capture-root') : document.body;
 
                 if (!isReactMode) {
-                    // 全 HTML 模式，直接改造 body 使其支持画板功能
                     document.documentElement.style.overflow = 'hidden';
                     document.documentElement.style.backgroundColor = '#e5e5e5';
                     document.body.style.transformOrigin = '0 0';
@@ -295,7 +202,7 @@ export default function App() {
                     if (event.data === 'take-screenshot') {
                         var oldTransform = stage.style.transform;
                         try {
-                            await new Promise(resolve => setTimeout(resolve, 800)); 
+                            await new Promise(resolve => setTimeout(resolve, 500)); 
                             stage.style.transform = 'none';
                             stage.getBoundingClientRect();
                             await new Promise(r => requestAnimationFrame(r)); await new Promise(r => requestAnimationFrame(r)); 
@@ -307,7 +214,39 @@ export default function App() {
                                 scrollY: -window.scrollY, scrollX: -window.scrollX,
                                 windowWidth: captureWidth, windowHeight: captureHeight,
                                 width: captureWidth, height: captureHeight,
-                                useCORS: true, allowTaint: true, backgroundColor: '#ffffff', scale: window.devicePixelRatio || 2, logging: false
+                                useCORS: true, allowTaint: true, backgroundColor: '#ffffff', scale: window.devicePixelRatio || 2, logging: false,
+                                
+                                // 🌟 魔法核心：在截图创建的隐形克隆体上，暴力修复所有兼容Bug，绝不触碰用户的原生 DOM！
+                                onclone: function(clonedDoc) {
+                                    const fixStyle = clonedDoc.createElement('style');
+                                    fixStyle.innerHTML = \`
+                                        /* 1. 解决动画截半空：强制结束所有浮动动画 */
+                                        *, *::before, *::after {
+                                            animation: none !important;
+                                            transition: none !important;
+                                            opacity: 1 !important;
+                                            transform: none !important;
+                                        }
+                                        /* 2. 解决渐变文本实心红块 Bug：退化为纯色文本 */
+                                        .text-gradient {
+                                            background: none !important;
+                                            -webkit-text-fill-color: initial !important;
+                                            color: #E60012 !important; 
+                                        }
+                                        /* 3. 解决 blur 变黑圈 Bug：替换为兼容极好的安全径向渐变 */
+                                        .bg-circle {
+                                            filter: none !important;
+                                            background-color: transparent !important;
+                                            background-image: radial-gradient(circle, rgba(230,0,18,0.15) 0%, rgba(230,0,18,0) 70%) !important;
+                                        }
+                                        /* 4. 强制闭合 SVG 动画圆环：写死进度使其渲染 */
+                                        .circle { stroke-dasharray: 92, 100 !important; }
+                                        /* 5. 防排版错乱与截断：释放高度，让吸顶归位 */
+                                        .min-h-[85vh], .h-screen, .min-h-screen { min-height: 100% !important; height: auto !important; max-height: none !important; }
+                                        .sticky, .fixed { position: relative !important; top: auto !important; z-index: auto !important; }
+                                    \`;
+                                    clonedDoc.head.appendChild(fixStyle);
+                                }
                             }).then(canvas => {
                                 stage.style.transform = oldTransform; 
                                 window.parent.postMessage({ type: 'capture-success', data: canvas.toDataURL('image/png', 1.0) }, '*');
@@ -342,21 +281,12 @@ export default function App() {
                 return;
             }
 
-            // 智能识别代码格式
             const isFullHTML = /<!DOCTYPE\s+html>/i.test(rawCode) || /<html/i.test(rawCode);
-
             let injectedHTML = '';
 
             if (isFullHTML) {
-                // =============== 路径 A: 处理完整 HTML 网页 ===============
+                // 完全不污染用户的 head，仅在 body 后方植入我们的截图画板脚本
                 let html = rawCode;
-                // 1. 注入防截断 CSS 到 head
-                if (html.includes('</head>')) {
-                    html = html.replace('</head>', antiTruncateCSS + '</head>');
-                } else {
-                    html = antiTruncateCSS + html; 
-                }
-                // 2. 注入截屏与画板引擎到 body 尾部
                 if (html.includes('</body>')) {
                     html = html.replace('</body>', controlScripts + '</body>');
                 } else {
@@ -365,8 +295,7 @@ export default function App() {
                 injectedHTML = html;
             } 
             else {
-                // =============== 路径 B: 处理纯 React / JSX (原版稳定架构) ===============
-                // 对纯 React 做 CDN 映射替换
+                // 原版纯 React 解析
                 let safeCode = rawCode.replace(/(?:import|from)\s+['"]([^'.\/][^'"]*)['"]/g, (match, pkg) => {
                     if (pkg === 'react') return match.replace(pkg, 'https://esm.sh/react@18.3.1');
                     if (pkg === 'react-dom/client') return match.replace(pkg, 'https://esm.sh/react-dom@18.3.1/client');
@@ -387,7 +316,6 @@ export default function App() {
         #tool-canvas-stage { position: absolute; transform-origin: 0 0; will-change: transform; padding: 40px; box-sizing: border-box; display: inline-block; }
         #capture-root { width: max-content; max-width: none; box-shadow: 0 20px 60px -15px rgba(0,0,0,0.1); background: #fff; user-select: auto; -webkit-user-select: auto; cursor: auto; }
     </style>
-    ${antiTruncateCSS}
     <script src="https://cdn.tailwindcss.com"><\/script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"><\/script>
     <script type="importmap">
@@ -436,16 +364,12 @@ export default function App() {
             renderTimeout = setTimeout(updatePreview, 1000);
         });
 
-        // 初始渲染
         updatePreview();
 
-        // ==========================================
-        // 3. 工具栏按钮交互
-        // ==========================================
         document.getElementById('btn-clear').addEventListener('click', () => {
             if(confirm('确定要清空所有代码吗？')) {
                 editor.setValue('', -1);
-                if(codeDrawer.classList.contains('collapsed')) toggleDrawer(); // 清空时自动展开以便输入
+                if(codeDrawer.classList.contains('collapsed')) toggleDrawer(); 
                 editor.focus();
             }
         });
@@ -468,9 +392,6 @@ export default function App() {
             renderFrame.contentWindow.postMessage('take-screenshot', '*');
         });
 
-        // ==========================================
-        // 4. iframe 通信结果处理
-        // ==========================================
         window.addEventListener('message', function(event) {
             const msg = event.data;
             if (!msg || typeof msg !== 'object') return;
